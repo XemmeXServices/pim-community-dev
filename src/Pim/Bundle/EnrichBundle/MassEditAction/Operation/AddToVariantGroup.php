@@ -6,6 +6,7 @@ use Akeneo\Component\StorageUtils\Saver\BulkSaverInterface;
 use Pim\Bundle\CatalogBundle\Model\GroupInterface;
 use Pim\Bundle\CatalogBundle\Model\ProductInterface;
 use Pim\Bundle\CatalogBundle\Repository\GroupRepositoryInterface;
+use Pim\Bundle\CatalogBundle\Repository\ProductMassActionRepositoryInterface;
 use Pim\Bundle\CatalogBundle\Updater\ProductTemplateUpdaterInterface;
 use Symfony\Component\Validator\ValidatorInterface;
 
@@ -39,23 +40,29 @@ class AddToVariantGroup extends ProductMassEditOperation
     /** @var string[] */
     protected $warningMessages = null;
 
+    /** @var array  */
+    protected $validVariantGroups = [];
+
     /**
-     * @param GroupRepositoryInterface        $groupRepository
-     * @param BulkSaverInterface              $productSaver
-     * @param ProductTemplateUpdaterInterface $templateUpdater
-     * @param ValidatorInterface              $validator
+     * @param GroupRepositoryInterface              $groupRepository
+     * @param BulkSaverInterface                    $productSaver
+     * @param ProductTemplateUpdaterInterface       $templateUpdater
+     * @param ValidatorInterface                    $validator
+     * @param ProductMassActionRepositoryInterface  $productMassActionRepo
      */
     public function __construct(
         GroupRepositoryInterface $groupRepository,
         BulkSaverInterface $productSaver,
         ProductTemplateUpdaterInterface $templateUpdater,
-        ValidatorInterface $validator
+        ValidatorInterface $validator,
+        ProductMassActionRepositoryInterface $productMassActionRepo
     ) {
         parent::__construct($productSaver);
 
         $this->groupRepository = $groupRepository;
         $this->templateUpdater = $templateUpdater;
-        $this->validator       = $validator;
+        $this->validator = $validator;
+        $this->productMassActionRepo = $productMassActionRepo;
     }
 
     /**
@@ -108,7 +115,7 @@ class AddToVariantGroup extends ProductMassEditOperation
     public function getFormOptions()
     {
         return [
-            'groups' => $this->groupRepository->getAllVariantGroups()
+            'groups' => $this->getVariantGroupsWithCommonAttributes()
         ];
     }
 
@@ -158,38 +165,121 @@ class AddToVariantGroup extends ProductMassEditOperation
 
     /**
      * Get warning messages to display during the mass edit action
-     * @param ProductInterface[] $products
      *
      * @return string[]
      */
-    protected function generateWarningMessages(array $products)
+    protected function generateWarningMessages()
     {
         $messages = [];
 
-        // TODO properly handle this case
-        if (count($this->groupRepository->getAllVariantGroups()) === 0) {
+        if ($this->hasNoVariantGroupWarning()) {
             $messages[] = [
                 'key'     => 'pim_enrich.mass_edit_action.add-to-variant-group.no_variant_group',
                 'options' => []
             ];
-
-            return $messages;
+        } elseif ($this->hasNoValidVariantGroupWarning()) {
+            $messages[] = [
+                'key'     => 'pim_enrich.mass_edit_action.add-to-variant-group.no_valid_variant_group',
+                'options' => []
+            ];
         }
 
+        $invalidProducts = $this->getInvalidProductWarningInfos();
+        if ($invalidProducts) {
+            $messages[] = [
+                'key'     =>
+                    'pim_enrich.mass_edit_action.add-to-variant-group.already_in_variant_group_or_not_valid',
+                'options' =>
+                    ['%products%' => implode(', ', $invalidProducts)]
+            ];
+        }
+
+        $skippedVariantGroups = $this->getSkippedVariantGroupWarningInfos();
+        if ($skippedVariantGroups) {
+            $messages[] = [
+                'key'     => 'pim_enrich.mass_edit_action.add-to-variant-group.some_variant_groups_are_skipped',
+                'options' => ['%groups%' => implode(', ', $skippedVariantGroups)]
+            ];
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Has a warning if there is no variant group
+     *
+     * @return bool
+     */
+    protected function hasNoVariantGroupWarning()
+    {
+        $variantGroups = $this->groupRepository->getAllVariantGroups();
+
+        return count($variantGroups) === 0;
+    }
+
+    /**
+     * Has a warning if there is no valid variant group.
+     *
+     * @return bool
+     */
+    protected function hasNoValidVariantGroupWarning()
+    {
+        return count($this->validVariantGroups) === 0;
+    }
+
+    /**
+     * Get warning information if there is any invalid product.
+     * Return all invalid product identifiers in an array, or an empty array if no invalid product.
+     *
+     * @return array
+     */
+    protected function getInvalidProductWarningInfos()
+    {
         $invalidProducts = [];
+
         foreach ($this->skippedObjects as $product) {
             if ($product instanceof ProductInterface) {
                 $invalidProducts[] = $product->getIdentifier();
             }
         }
 
-        if (count($invalidProducts) > 0) {
-            $messages[] = [
-                'key'     => 'pim_enrich.mass_edit_action.add-to-variant-group.already_in_variant_group_or_not_valid',
-                'options' => ['%products%' => implode(', ', $invalidProducts)]
-            ];
+        return $invalidProducts;
+    }
+
+    /**
+     * Get warning information if there is any skipped variant group (no common attribute with products).
+     * Return all skipped variant groups with their label and code, or an empty array if no variant group skipped.
+     *
+     * @return array
+     */
+    protected function getSkippedVariantGroupWarningInfos()
+    {
+        $variantGroups = $this->groupRepository->getAllVariantGroups();
+        $invalidVariantGroups = array_diff($variantGroups, $this->validVariantGroups);
+
+        $skippedVariantGroups = array_map(function ($variantGroup) {
+            return sprintf('%s [%s]', $variantGroup->getLabel(), $variantGroup->getCode());
+        }, $invalidVariantGroups);
+
+        return $skippedVariantGroups;
+    }
+
+    /**
+     * Get and returns all variant groups with common attributes with selected products
+     *
+     * @return array
+     */
+    protected function getVariantGroupsWithCommonAttributes()
+    {
+        if ($this->objects) {
+            $productIds = array_map(function ($product) {
+                return $product->getId();
+            }, $this->objects);
+
+            $commonAttributeIds = $this->productMassActionRepo->findCommonAttributeIds($productIds);
+            $this->validVariantGroups = $this->groupRepository->getVariantGroupsByAttributes($commonAttributeIds);
         }
 
-        return $messages;
+        return $this->validVariantGroups;
     }
 }
