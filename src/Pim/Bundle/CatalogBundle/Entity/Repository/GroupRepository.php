@@ -121,11 +121,7 @@ class GroupRepository extends ReferableEntityRepository implements GroupReposito
     }
 
     /**
-     * Get variant groups where all their attributes are in $attributeIds
-     *
-     * @param array $attributeIds
-     *
-     * @return array
+     * {@inheritdoc}
      */
     public function getVariantGroupsByAttributes(array $attributeIds)
     {

@@ -75,4 +75,13 @@ interface GroupRepositoryInterface extends IdentifiableObjectRepositoryInterface
      * @return array
      */
     public function getAllVariantGroupIds();
+
+    /**
+     * Get variant groups where all their attributes are in $attributeIds
+     *
+     * @param array $attributeIds
+     *
+     * @return array
+     */
+    public function getVariantGroupsByAttributes(array $attributeIds);
 }
