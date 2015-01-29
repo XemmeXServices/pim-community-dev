@@ -40,7 +40,7 @@ class AddToVariantGroup extends ProductMassEditOperation
     /** @var string[] */
     protected $warningMessages = null;
 
-    /** @var array  */
+    /** @var GroupInterface[]  */
     protected $validVariantGroups = [];
 
     /**
@@ -78,7 +78,7 @@ class AddToVariantGroup extends ProductMassEditOperation
 
             if ($object instanceof ProductInterface &&
                 null === $object->getVariantGroup() &&
-                count($violations) === 0
+                0 === count($violations)
             ) {
                 $this->objects[] = $object;
             } else {
@@ -214,7 +214,7 @@ class AddToVariantGroup extends ProductMassEditOperation
     {
         $variantGroups = $this->groupRepository->getAllVariantGroups();
 
-        return count($variantGroups) === 0;
+        return 0 === count($variantGroups);
     }
 
     /**
@@ -224,7 +224,7 @@ class AddToVariantGroup extends ProductMassEditOperation
      */
     protected function hasNoValidVariantGroupWarning()
     {
-        return count($this->validVariantGroups) === 0;
+        return 0 === count($this->validVariantGroups);
     }
 
     /**
