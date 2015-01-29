@@ -109,7 +109,7 @@ class GroupRepository extends ReferableEntityRepository implements GroupReposito
     /**
      * {@inheritdoc}
      */
-    public function getVariantGroupsByAttributes(array $attributeIds)
+    public function getVariantGroupsByAttributeIds(array $attributeIds)
     {
         $qb = $this->getAllVariantGroupsQB();
         $variantGroups = $qb->innerJoin('g.attributes', 'attributes')
