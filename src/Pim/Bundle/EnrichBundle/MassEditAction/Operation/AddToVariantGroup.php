@@ -48,21 +48,21 @@ class AddToVariantGroup extends ProductMassEditOperation
      * @param BulkSaverInterface                    $productSaver
      * @param ProductTemplateUpdaterInterface       $templateUpdater
      * @param ValidatorInterface                    $validator
-     * @param ProductMassActionRepositoryInterface  $productMassActionRepo
+     * @param ProductMassActionRepositoryInterface  $prodMassActionRepo
      */
     public function __construct(
         GroupRepositoryInterface $groupRepository,
         BulkSaverInterface $productSaver,
         ProductTemplateUpdaterInterface $templateUpdater,
         ValidatorInterface $validator,
-        ProductMassActionRepositoryInterface $productMassActionRepo
+        ProductMassActionRepositoryInterface $prodMassActionRepo
     ) {
         parent::__construct($productSaver);
 
         $this->groupRepository = $groupRepository;
         $this->templateUpdater = $templateUpdater;
         $this->validator = $validator;
-        $this->productMassActionRepo = $productMassActionRepo;
+        $this->productMassActionRepo = $prodMassActionRepo;
     }
 
     /**

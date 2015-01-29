@@ -84,20 +84,6 @@ class GroupRepository extends ReferableEntityRepository implements GroupReposito
     }
 
     /**
-     * Get all variant groups query builder
-     *
-     * @return \Doctrine\ORM\QueryBuilder
-     */
-    protected function getAllVariantGroupsQB()
-    {
-        $qb = $this->createQueryBuilder('g');
-
-        return $qb->innerJoin('g.type', 'type')
-            ->where($qb->expr()->eq('type.variant', ':variant'))
-            ->setParameter(':variant', true);
-    }
-
-    /**
      * {@inheritdoc}
      */
     public function getAllVariantGroups()
@@ -129,29 +115,14 @@ class GroupRepository extends ReferableEntityRepository implements GroupReposito
         $variantGroups = $qb->innerJoin('g.attributes', 'attributes')
             ->getQuery()->execute();
 
-        $groupsWithCommonAttributes = array_filter($variantGroups, function ($variantGroup) use ($attributeIds) {
-            $variantGroupAttributeIds = $variantGroup->getAttributeIds();
-            $commonAttributes = array_intersect($variantGroupAttributeIds, $attributeIds);
+        $groupsWithAttributes = array_filter($variantGroups, function ($variantGroup) use ($attributeIds) {
+            $groupAttributeIds = $variantGroup->getAttributeIds();
+            $commonAttributes = array_intersect($groupAttributeIds, $attributeIds);
 
-            return count($commonAttributes) === count($variantGroupAttributeIds);
+            return count($commonAttributes) === count($groupAttributeIds);
         });
 
-        return $groupsWithCommonAttributes;
-    }
-
-    /**
-     * Get ordered groups by type
-     *
-     * @param GroupTypeInterface $type
-     *
-     * @return array
-     */
-    protected function getGroupsByType(GroupTypeInterface $type)
-    {
-        return $this
-            ->getGroupsByTypeQB($type)
-            ->getQuery()
-            ->getResult();
+        return $groupsWithAttributes;
     }
 
     /**
@@ -272,5 +243,34 @@ class GroupRepository extends ReferableEntityRepository implements GroupReposito
             ->where($alias.'.type = :groupType')
             ->addOrderBy($alias.'.code', 'ASC')
             ->setParameter('groupType', $type);
+    }
+
+    /**
+     * Get all variant groups query builder
+     *
+     * @return \Doctrine\ORM\QueryBuilder
+     */
+    protected function getAllVariantGroupsQB()
+    {
+        $qb = $this->createQueryBuilder('g');
+
+        return $qb->innerJoin('g.type', 'type')
+            ->where($qb->expr()->eq('type.variant', ':variant'))
+            ->setParameter(':variant', true);
+    }
+
+    /**
+     * Get ordered groups by type
+     *
+     * @param GroupTypeInterface $type
+     *
+     * @return array
+     */
+    protected function getGroupsByType(GroupTypeInterface $type)
+    {
+        return $this
+            ->getGroupsByTypeQB($type)
+            ->getQuery()
+            ->getResult();
     }
 }
