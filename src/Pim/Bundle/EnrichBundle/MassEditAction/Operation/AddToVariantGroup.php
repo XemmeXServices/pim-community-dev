@@ -115,7 +115,7 @@ class AddToVariantGroup extends ProductMassEditOperation
     public function getFormOptions()
     {
         return [
-            'groups' => $this->getVariantGroupsWithCommonAttributes()
+            'groups' => $this->getVariantGroupsWithCommonAttributes($this->objects)
         ];
     }
 
@@ -184,7 +184,7 @@ class AddToVariantGroup extends ProductMassEditOperation
             ];
         }
 
-        $invalidProducts = $this->getInvalidProductWarningInfos();
+        $invalidProducts = $this->getInvalidProductWarningInfos($this->skippedObjects);
         if ($invalidProducts) {
             $messages[] = [
                 'key'     =>
@@ -194,7 +194,7 @@ class AddToVariantGroup extends ProductMassEditOperation
             ];
         }
 
-        $skippedVariantGroups = $this->getSkippedVariantGroupWarningInfos();
+        $skippedVariantGroups = $this->getSkippedVariantGroupWarningInfos($this->validVariantGroups);
         if ($skippedVariantGroups) {
             $messages[] = [
                 'key'     => 'pim_enrich.mass_edit_action.add-to-variant-group.some_variant_groups_are_skipped',
@@ -228,12 +228,14 @@ class AddToVariantGroup extends ProductMassEditOperation
     }
 
     /**
-     * Get warning information if there is any invalid product.
+     * Get warning information if there is any $skippedProducts.
      * Return all invalid product identifiers in an array, or an empty array if no invalid product.
+     *
+     * @param array $skippedProducts
      *
      * @return array
      */
-    protected function getInvalidProductWarningInfos()
+    protected function getInvalidProductWarningInfos(array $skippedProducts)
     {
         $invalidProducts = [];
 
@@ -250,12 +252,14 @@ class AddToVariantGroup extends ProductMassEditOperation
      * Get warning information if there is any skipped variant group (no common attribute with products).
      * Return all skipped variant groups with their label and code, or an empty array if no variant group skipped.
      *
+     * @param array $validVariantGroups
+     *
      * @return array
      */
-    protected function getSkippedVariantGroupWarningInfos()
+    protected function getSkippedVariantGroupWarningInfos(array $validVariantGroups)
     {
         $variantGroups = $this->groupRepository->getAllVariantGroups();
-        $invalidVariantGroups = array_diff($variantGroups, $this->validVariantGroups);
+        $invalidVariantGroups = array_diff($variantGroups, $validVariantGroups);
 
         $skippedVariantGroups = array_map(function ($variantGroup) {
             return sprintf('%s [%s]', $variantGroup->getLabel(), $variantGroup->getCode());
@@ -265,16 +269,18 @@ class AddToVariantGroup extends ProductMassEditOperation
     }
 
     /**
-     * Get and returns all variant groups with common attributes with selected products
+     * Get and returns all variant groups with common attributes with selected $products
+     *
+     * @param array $products
      *
      * @return array
      */
-    protected function getVariantGroupsWithCommonAttributes()
+    protected function getVariantGroupsWithCommonAttributes(array $products)
     {
-        if ($this->objects) {
+        if ($products) {
             $productIds = array_map(function ($product) {
                 return $product->getId();
-            }, $this->objects);
+            }, $products);
 
             $commonAttributeIds = $this->productMassActionRepo->findCommonAttributeIds($productIds);
             $this->validVariantGroups = $this->groupRepository->getVariantGroupsByAttributes($commonAttributeIds);
